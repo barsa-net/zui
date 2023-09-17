@@ -17,7 +17,7 @@ function App() {
 
   return (
     <div className="App" data-testid="app-container">
-      <Router>
+      <Router basename="/ui">
         <Routes>
           <Route element={<AuthWrapper isLoggedIn={isLoggedIn} hasHeader redirect="/login" />}>
             <Route path="/" element={<Navigate to="/home" />} />
