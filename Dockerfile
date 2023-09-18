@@ -1,5 +1,4 @@
 ARG NODE_VERSION=16
-ARG NGINX_VERSION=stable
 
 FROM docker.io/library/node:$NODE_VERSION AS builder
 
@@ -12,6 +11,21 @@ COPY . .
 
 RUN npm run build
 
-FROM docker.io/library/nginx:$NGINX_VERSION
+FROM rust:1.72 AS zwr
 
-COPY --from=builder /app/build /usr/share/nginx/html
+WORKDIR /usr/src/
+
+COPY Cargo* ./
+
+COPY zwr/src/main.rs zwr/src/main.rs
+
+RUN RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --target x86_64-unknown-linux-gnu
+
+FROM gcr.io/distroless/base
+
+WORKDIR /opt/zui
+
+COPY --from=zwr /usr/src/target/x86_64-unknown-linux-gnu/release/zwr ./zwr
+COPY --from=builder /app/build/ ./ui/
+
+ENTRYPOINT ["/opt/zui/zwr"]
