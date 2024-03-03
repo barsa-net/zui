@@ -6,6 +6,10 @@ const osFilters = [
   {
     label: 'linux',
     value: 'linux'
+  },
+  {
+    label: 'freebsd',
+    value: 'freebsd'
   }
 ];
 
@@ -18,6 +22,11 @@ const imageFilters = [
   {
     label: 'Bookmarks',
     value: 'IsBookmarked',
+    type: 'boolean'
+  },
+  {
+    label: 'Starred Repositories',
+    value: 'IsStarred',
     type: 'boolean'
   }
 ];

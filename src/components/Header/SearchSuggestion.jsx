@@ -132,8 +132,14 @@ function SearchSuggestion({ setSearchCurrentValue = () => {} }) {
 
   const handleSearch = (event) => {
     const { key, type } = event;
+    const name = event.target.value;
     if (key === 'Enter' || type === 'click') {
-      navigate({ pathname: `/explore`, search: createSearchParams({ search: inputValue || '' }).toString() });
+      if (name?.includes(':')) {
+        const splitName = name.split(':');
+        navigate(`/image/${encodeURIComponent(splitName[0])}/tag/${splitName[1]}`);
+      } else {
+        navigate({ pathname: `/explore`, search: createSearchParams({ search: inputValue || '' }).toString() });
+      }
     }
   };
 
@@ -295,12 +301,26 @@ function SearchSuggestion({ setSearchCurrentValue = () => {} }) {
       <List
         {...getMenuProps()}
         className={
-          isOpen && !isLoading && !isFailedSearch
+          isOpen && !isFailedSearch
             ? `${classes.resultsWrapper} ${isComponentFocused && classes.resultsWrapperFocused}`
             : classes.resultsWrapperHidden
         }
       >
         {isOpen && suggestionData?.length > 0 && renderSuggestions()}
+        {isOpen && isLoading && !isEmpty(searchQuery) && isEmpty(suggestionData) && (
+          <>
+            <ListItem
+              className={classes.searchItem}
+              style={{ color: '#52637A', fontSize: '1rem', textOverflow: 'ellipsis' }}
+              {...getItemProps({ item: '', index: 0 })}
+              spacing={2}
+            >
+              <Stack direction="row" spacing={2}>
+                <Typography>Loading...</Typography>
+              </Stack>
+            </ListItem>
+          </>
+        )}
         {isOpen && isEmpty(searchQuery) && isEmpty(suggestionData) && (
           <>
             <ListItem

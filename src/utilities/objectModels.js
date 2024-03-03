@@ -15,6 +15,7 @@ const mapToRepo = (responseRepo) => {
     logo: responseRepo.NewestImage?.Logo,
     lastUpdated: responseRepo.LastUpdated,
     downloads: responseRepo.DownloadCount,
+    stars: responseRepo.StarCount,
     vulnerabiltySeverity: responseRepo.NewestImage?.Vulnerabilities?.MaxSeverity,
     vulnerabilityCount: responseRepo.NewestImage?.Vulnerabilities?.Count
   };
@@ -33,6 +34,7 @@ const mapToRepoFromRepoInfo = (responseRepoInfo) => {
     title: responseRepoInfo.Summary?.NewestImage?.Title,
     source: responseRepoInfo.Summary?.NewestImage?.Source,
     downloads: responseRepoInfo.Summary?.NewestImage?.DownloadCount,
+    stars: responseRepoInfo.Summary?.NewestImage?.StarCount,
     overview: responseRepoInfo.Summary?.NewestImage?.Documentation,
     license: responseRepoInfo.Summary?.NewestImage?.Licenses,
     vulnerabilitySeverity: responseRepoInfo.Summary?.NewestImage?.Vulnerabilities?.MaxSeverity,
@@ -53,6 +55,7 @@ const mapToImage = (responseImage) => {
     referrers: responseImage.Referrers,
     size: responseImage.Size,
     downloadCount: responseImage.DownloadCount,
+    starCount: responseImage.StarCount,
     lastUpdated: responseImage.LastUpdated,
     description: responseImage.Description,
     isSigned: responseImage.IsSigned,
@@ -66,6 +69,7 @@ const mapToImage = (responseImage) => {
     authors: responseImage.Authors,
     vulnerabiltySeverity: responseImage.Vulnerabilities?.MaxSeverity,
     vulnerabilityCount: responseImage.Vulnerabilities?.Count,
+    isDeletable: responseImage.IsDeletable,
     // frontend only prop to increase interop with Repo objects and code reusability
     name: `${responseImage.RepoName}:${responseImage.Tag}`
   };
@@ -79,6 +83,7 @@ const mapToManifest = (responseManifest) => {
     size: responseManifest.Size,
     platform: responseManifest.Platform,
     downloadCount: responseManifest.DownloadCount,
+    starCount: responseManifest.StarCount,
     layers: responseManifest.Layers,
     history: responseManifest.History,
     vulnerabilities: responseManifest.Vulnerabilities
@@ -91,8 +96,34 @@ const mapCVEInfo = (cveInfo) => {
       id: cve.Id,
       severity: cve.Severity,
       title: cve.Title,
-      description: cve.Description
+      description: cve.Description,
+      reference: cve.Reference,
+      packageList: cve.PackageList?.map((pkg) => ({
+        packageName: pkg.Name,
+        packagePath: pkg.PackagePath,
+        packageInstalledVersion: pkg.InstalledVersion,
+        packageFixedVersion: pkg.FixedVersion
+      }))
     };
+  });
+  return cveList;
+};
+
+const mapAllCVEInfo = (cveInfo) => {
+  const cveList = cveInfo.flatMap((cve) => {
+    return cve.PackageList.map((packageInfo) => {
+      return {
+        id: cve.Id,
+        severity: cve.Severity,
+        title: cve.Title,
+        description: cve.Description,
+        reference: cve.Reference,
+        packageName: packageInfo.Name,
+        packagePath: packageInfo.PackagePath,
+        packageInstalledVersion: packageInfo.InstalledVersion,
+        packageFixedVersion: packageInfo.FixedVersion
+      };
+    });
   });
   return cveList;
 };
@@ -119,4 +150,4 @@ const mapReferrer = (referrer) => ({
   annotations: referrer.Annotations?.map((annotation) => ({ key: annotation.Key, value: annotation.Value }))
 });
 
-export { mapToRepo, mapToImage, mapToRepoFromRepoInfo, mapCVEInfo, mapReferrer, mapToManifest };
+export { mapToRepo, mapToImage, mapToRepoFromRepoInfo, mapCVEInfo, mapAllCVEInfo, mapReferrer, mapToManifest };

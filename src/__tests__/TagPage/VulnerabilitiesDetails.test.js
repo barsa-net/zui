@@ -1,10 +1,12 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, within, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import MockThemeProvider from '__mocks__/MockThemeProvider';
 import { api } from 'api';
 import VulnerabilitiesDetails from 'components/Tag/Tabs/VulnerabilitiesDetails';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+
+jest.mock('xlsx');
 
 const StateVulnerabilitiesWrapper = () => {
   return (
@@ -16,10 +18,18 @@ const StateVulnerabilitiesWrapper = () => {
   );
 };
 
-const mockCVEList = {
-  CVEListForImage: {
+const simpleMockCVEList = {
+ CVEListForImage: {
     Tag: '',
-    Page: { ItemCount: 20, TotalCount: 20 },
+    Page: { ItemCount: 2, TotalCount: 2 },
+    Summary: {
+      Count: 2,
+      UnknownCount: 0,
+      LowCount: 0,
+      MediumCount: 1,
+      HighCount: 0,
+      CriticalCount: 1,
+    },
     CVEList: [
       {
         Id: 'CVE-2020-16156',
@@ -29,6 +39,53 @@ const mockCVEList = {
         PackageList: [
           {
             Name: 'perl-base',
+            PackagePath: 'Not Specified',
+            InstalledVersion: '5.30.0-9ubuntu0.2',
+            FixedVersion: 'Not Specified'
+          }
+        ]
+      },
+      {
+        Id: 'CVE-2016-1000027',
+        Title: 'spring: HttpInvokerServiceExporter readRemoteInvocation method untrusted java deserialization',
+        Description: "Pivotal Spring Framework through 5.3.16 suffers from a potential remote code execution (RCE) issue if used for Java deserialization of untrusted data. Depending on how the library is implemented within a product, this issue may or not occur, and authentication may be required. NOTE: the vendor's position is that untrusted data is not an intended use case. The product's behavior will not be changed because some users rely on deserialization of trusted data.",
+        Severity: 'CRITICAL',
+        Reference: 'https://avd.aquasec.com/nvd/cve-2016-1000027',
+        PackageList: [
+            {
+                Name: 'org.springframework:spring-web',
+                PackagePath: 'usr/local/tomcat/webapps/spring4shell.war/WEB-INF/lib/spring-web-5.3.15.jar',
+                InstalledVersion: '5.3.15',
+                FixedVersion: '6.0.0'
+            }
+        ]
+      },
+    ]
+  }
+}
+
+const mockCVEList = {
+  CVEListForImage: {
+    Tag: '',
+    Page: { ItemCount: 20, TotalCount: 20 },
+    Summary: {
+      Count: 5,
+      UnknownCount: 1,
+      LowCount: 1,
+      MediumCount: 1,
+      HighCount: 1,
+      CriticalCount: 1,
+    },
+    CVEList: [
+      {
+        Id: 'CVE-2020-16156',
+        Title: 'perl-CPAN: Bypass of verification of signatures in CHECKSUMS files',
+        Description: 'CPAN 2.28 allows Signature Verification Bypass.',
+        Severity: 'MEDIUM',
+        PackageList: [
+          {
+            Name: 'perl-base',
+            PackagePath: 'Not Specified',
             InstalledVersion: '5.30.0-9ubuntu0.2',
             FixedVersion: 'Not Specified'
           }
@@ -44,26 +101,31 @@ const mockCVEList = {
         PackageList: [
           {
             Name: 'krb5-locales',
+            PackagePath: 'Not Specified',
             InstalledVersion: '1.17-6ubuntu4.1',
             FixedVersion: 'Not Specified'
           },
           {
             Name: 'libgssapi-krb5-2',
+            PackagePath: 'Not Specified',
             InstalledVersion: '1.17-6ubuntu4.1',
             FixedVersion: 'Not Specified'
           },
           {
             Name: 'libk5crypto3',
+            PackagePath: 'Not Specified',
             InstalledVersion: '1.17-6ubuntu4.1',
             FixedVersion: 'Not Specified'
           },
           {
             Name: 'libkrb5-3',
+            PackagePath: 'Not Specified',
             InstalledVersion: '1.17-6ubuntu4.1',
             FixedVersion: 'Not Specified'
           },
           {
             Name: 'libkrb5support0',
+            PackagePath: 'Not Specified',
             InstalledVersion: '1.17-6ubuntu4.1',
             FixedVersion: 'Not Specified'
           }
@@ -78,6 +140,7 @@ const mockCVEList = {
         PackageList: [
           {
             Name: 'libgnutls30',
+            PackagePath: 'Not Specified',
             InstalledVersion: '3.6.13-2ubuntu1.6',
             FixedVersion: '3.6.13-2ubuntu1.7'
           }
@@ -92,6 +155,7 @@ const mockCVEList = {
         PackageList: [
           {
             Name: 'libpcre2-8-0',
+            PackagePath: 'Not Specified',
             InstalledVersion: '10.34-7',
             FixedVersion: 'Not Specified'
           }
@@ -106,6 +170,7 @@ const mockCVEList = {
         PackageList: [
           {
             Name: 'libsqlite3-0',
+            PackagePath: 'Not Specified',
             InstalledVersion: '3.31.1-4ubuntu0.3',
             FixedVersion: '3.31.1-4ubuntu0.4'
           }
@@ -120,6 +185,7 @@ const mockCVEList = {
         PackageList: [
           {
             Name: 'libpcre3',
+            PackagePath: 'Not Specified',
             InstalledVersion: '2:8.39-12ubuntu0.1',
             FixedVersion: 'Not Specified'
           }
@@ -134,6 +200,7 @@ const mockCVEList = {
         PackageList: [
           {
             Name: 'libsqlite3-0',
+            PackagePath: 'Not Specified',
             InstalledVersion: '3.31.1-4ubuntu0.3',
             FixedVersion: '3.31.1-4ubuntu0.4'
           }
@@ -148,11 +215,13 @@ const mockCVEList = {
         PackageList: [
           {
             Name: 'login',
+            PackagePath: 'Not Specified',
             InstalledVersion: '1:4.8.1-1ubuntu5.20.04.2',
             FixedVersion: 'Not Specified'
           },
           {
             Name: 'passwd',
+            PackagePath: 'Not Specified',
             InstalledVersion: '1:4.8.1-1ubuntu5.20.04.2',
             FixedVersion: 'Not Specified'
           }
@@ -167,6 +236,7 @@ const mockCVEList = {
         PackageList: [
           {
             Name: 'libgmp10',
+            PackagePath: 'Not Specified',
             InstalledVersion: '2:6.2.0+dfsg-4',
             FixedVersion: 'Not Specified'
           }
@@ -181,6 +251,7 @@ const mockCVEList = {
         PackageList: [
           {
             Name: 'libgnutls30',
+            PackagePath: 'Not Specified',
             InstalledVersion: '3.6.13-2ubuntu1.6',
             FixedVersion: '3.6.13-2ubuntu1.7'
           }
@@ -195,26 +266,31 @@ const mockCVEList = {
         PackageList: [
           {
             Name: 'libncurses6',
+            PackagePath: 'Not Specified',
             InstalledVersion: '6.2-0ubuntu2',
             FixedVersion: 'Not Specified'
           },
           {
             Name: 'libncursesw6',
+            PackagePath: 'Not Specified',
             InstalledVersion: '6.2-0ubuntu2',
             FixedVersion: 'Not Specified'
           },
           {
             Name: 'libtinfo6',
+            PackagePath: 'Not Specified',
             InstalledVersion: '6.2-0ubuntu2',
             FixedVersion: 'Not Specified'
           },
           {
             Name: 'ncurses-base',
+            PackagePath: 'Not Specified',
             InstalledVersion: '6.2-0ubuntu2',
             FixedVersion: 'Not Specified'
           },
           {
             Name: 'ncurses-bin',
+            PackagePath: 'Not Specified',
             InstalledVersion: '6.2-0ubuntu2',
             FixedVersion: 'Not Specified'
           }
@@ -229,6 +305,7 @@ const mockCVEList = {
         PackageList: [
           {
             Name: 'libpcre2-8-0',
+            PackagePath: 'Not Specified',
             InstalledVersion: '10.34-7',
             FixedVersion: 'Not Specified'
           }
@@ -243,26 +320,31 @@ const mockCVEList = {
         PackageList: [
           {
             Name: 'libncurses6',
+            PackagePath: 'Not Specified',
             InstalledVersion: '6.2-0ubuntu2',
             FixedVersion: 'Not Specified'
           },
           {
             Name: 'libncursesw6',
+            PackagePath: 'Not Specified',
             InstalledVersion: '6.2-0ubuntu2',
             FixedVersion: 'Not Specified'
           },
           {
             Name: 'libtinfo6',
+            PackagePath: 'Not Specified',
             InstalledVersion: '6.2-0ubuntu2',
             FixedVersion: 'Not Specified'
           },
           {
             Name: 'ncurses-base',
+            PackagePath: 'Not Specified',
             InstalledVersion: '6.2-0ubuntu2',
             FixedVersion: 'Not Specified'
           },
           {
             Name: 'ncurses-bin',
+            PackagePath: 'Not Specified',
             InstalledVersion: '6.2-0ubuntu2',
             FixedVersion: 'Not Specified'
           }
@@ -277,6 +359,7 @@ const mockCVEList = {
         PackageList: [
           {
             Name: 'coreutils',
+            PackagePath: 'Not Specified',
             InstalledVersion: '8.30-3ubuntu2',
             FixedVersion: 'Not Specified'
           }
@@ -291,46 +374,55 @@ const mockCVEList = {
         PackageList: [
           {
             Name: 'libasn1-8-heimdal',
+            PackagePath: 'Not Specified',
             InstalledVersion: '7.7.0+dfsg-1ubuntu1',
             FixedVersion: 'Not Specified'
           },
           {
             Name: 'libgssapi3-heimdal',
+            PackagePath: 'Not Specified',
             InstalledVersion: '7.7.0+dfsg-1ubuntu1',
             FixedVersion: 'Not Specified'
           },
           {
             Name: 'libhcrypto4-heimdal',
+            PackagePath: 'Not Specified',
             InstalledVersion: '7.7.0+dfsg-1ubuntu1',
             FixedVersion: 'Not Specified'
           },
           {
             Name: 'libheimbase1-heimdal',
+            PackagePath: 'Not Specified',
             InstalledVersion: '7.7.0+dfsg-1ubuntu1',
             FixedVersion: 'Not Specified'
           },
           {
             Name: 'libheimntlm0-heimdal',
+            PackagePath: 'Not Specified',
             InstalledVersion: '7.7.0+dfsg-1ubuntu1',
             FixedVersion: 'Not Specified'
           },
           {
             Name: 'libhx509-5-heimdal',
+            PackagePath: 'Not Specified',
             InstalledVersion: '7.7.0+dfsg-1ubuntu1',
             FixedVersion: 'Not Specified'
           },
           {
             Name: 'libkrb5-26-heimdal',
+            PackagePath: 'Not Specified',
             InstalledVersion: '7.7.0+dfsg-1ubuntu1',
             FixedVersion: 'Not Specified'
           },
           {
             Name: 'libroken18-heimdal',
+            PackagePath: 'Not Specified',
             InstalledVersion: '7.7.0+dfsg-1ubuntu1',
             FixedVersion: 'Not Specified'
           },
           {
             Name: 'libwind0-heimdal',
+            PackagePath: 'Not Specified',
             InstalledVersion: '7.7.0+dfsg-1ubuntu1',
             FixedVersion: 'Not Specified'
           }
@@ -345,11 +437,13 @@ const mockCVEList = {
         PackageList: [
           {
             Name: 'libc-bin',
+            PackagePath: 'Not Specified',
             InstalledVersion: '2.31-0ubuntu9.9',
             FixedVersion: 'Not Specified'
           },
           {
             Name: 'libc6',
+            PackagePath: 'Not Specified',
             InstalledVersion: '2.31-0ubuntu9.9',
             FixedVersion: 'Not Specified'
           }
@@ -363,6 +457,7 @@ const mockCVEList = {
         PackageList: [
           {
             Name: 'libcurl4',
+            PackagePath: 'Not Specified',
             InstalledVersion: '7.68.0-1ubuntu2.12',
             FixedVersion: '7.68.0-1ubuntu2.13'
           }
@@ -378,26 +473,31 @@ const mockCVEList = {
         PackageList: [
           {
             Name: 'krb5-locales',
+            PackagePath: 'Not Specified',
             InstalledVersion: '1.17-6ubuntu4.1',
             FixedVersion: 'Not Specified'
           },
           {
             Name: 'libgssapi-krb5-2',
+            PackagePath: 'Not Specified',
             InstalledVersion: '1.17-6ubuntu4.1',
             FixedVersion: 'Not Specified'
           },
           {
             Name: 'libk5crypto3',
+            PackagePath: 'Not Specified',
             InstalledVersion: '1.17-6ubuntu4.1',
             FixedVersion: 'Not Specified'
           },
           {
             Name: 'libkrb5-3',
+            PackagePath: 'Not Specified',
             InstalledVersion: '1.17-6ubuntu4.1',
             FixedVersion: 'Not Specified'
           },
           {
             Name: 'libkrb5support0',
+            PackagePath: 'Not Specified',
             InstalledVersion: '1.17-6ubuntu4.1',
             FixedVersion: 'Not Specified'
           }
@@ -412,6 +512,7 @@ const mockCVEList = {
         PackageList: [
           {
             Name: 'libsqlite3-0',
+            PackagePath: 'Not Specified',
             InstalledVersion: '3.31.1-4ubuntu0.3',
             FixedVersion: '3.31.1-4ubuntu0.4'
           }
@@ -427,6 +528,7 @@ const mockCVEList = {
         PackageList: [
           {
             Name: 'zlib1g',
+            PackagePath: 'Not Specified',
             InstalledVersion: '1:1.2.11.dfsg-2ubuntu1.3',
             FixedVersion: 'Not Specified'
           }
@@ -440,7 +542,49 @@ const mockCVEListFiltered = {
   CVEListForImage: {
     Tag: '',
     Page: { ItemCount: 20, TotalCount: 20 },
+    Summary: {
+      Count: 5,
+      UnknownCount: 1,
+      LowCount: 1,
+      MediumCount: 1,
+      HighCount: 1,
+      CriticalCount: 1,
+    },
     CVEList: mockCVEList.CVEListForImage.CVEList.filter((e) => e.Id.includes('2022'))
+  }
+};
+
+const mockCVEListFilteredBySeverity = (severity) => {
+  return {
+    CVEListForImage: {
+      Tag: '',
+      Page: { ItemCount: 20, TotalCount: 20 },
+      Summary: {
+        Count: 5,
+        UnknownCount: 1,
+        LowCount: 1,
+        MediumCount: 1,
+        HighCount: 1,
+        CriticalCount: 1,
+      },
+      CVEList: mockCVEList.CVEListForImage.CVEList.filter((e) => e.Severity.includes(severity))
+    }
+  };
+};
+
+const mockCVEListFilteredExclude = {
+  CVEListForImage: {
+    Tag: '',
+    Page: { ItemCount: 20, TotalCount: 20 },
+    Summary: {
+      Count: 5,
+      UnknownCount: 1,
+      LowCount: 1,
+      MediumCount: 1,
+      HighCount: 1,
+      CriticalCount: 1,
+    },
+    CVEList: mockCVEList.CVEListForImage.CVEList.filter((e) => !e.Id.includes('2022'))
   }
 };
 
@@ -497,40 +641,96 @@ describe('Vulnerabilties page', () => {
     jest.spyOn(api, 'get').mockResolvedValue({ status: 200, data: { data: mockCVEList } });
     render(<StateVulnerabilitiesWrapper />);
     await waitFor(() => expect(screen.getAllByText('Vulnerabilities')).toHaveLength(1));
-    await waitFor(() => expect(screen.getAllByText(/fixed in/i)).toHaveLength(20));
+    await waitFor(() => expect(screen.getAllByText('Total 5')).toHaveLength(1));
+    await waitFor(() => expect(screen.getAllByText(/CVE/)).toHaveLength(20));
+  });
+
+  it('renders the vulnerabilities by severity', async () => {
+    jest.spyOn(api, 'get').mockResolvedValueOnce({ status: 200, data: { data: mockCVEList } });
+    render(<StateVulnerabilitiesWrapper />);
+    await waitFor(() => expect(screen.getAllByText('Vulnerabilities')).toHaveLength(1));
+    await waitFor(() => expect(screen.getAllByText('Total 5')).toHaveLength(1));
+    await waitFor(() => expect(screen.getAllByText(/CVE-/)).toHaveLength(20));
+    expect(screen.getByLabelText('Medium')).toBeInTheDocument();
+    const mediumSeverity = await screen.getByLabelText('Medium');
+    jest.spyOn(api, 'get').mockResolvedValue({ status: 200, data: { data: mockCVEListFilteredBySeverity('MEDIUM') } });
+    fireEvent.click(mediumSeverity);
+    await waitFor(() => expect(screen.getAllByText(/CVE-/)).toHaveLength(6));
+    expect(screen.getByLabelText('High')).toBeInTheDocument();
+    const highSeverity = await screen.getByLabelText('High');
+    jest.spyOn(api, 'get').mockResolvedValue({ status: 200, data: { data: mockCVEListFilteredBySeverity('HIGH') } });
+    fireEvent.click(highSeverity);
+    await waitFor(() => expect(screen.getAllByText(/CVE-/)).toHaveLength(1));
+    expect(screen.getByLabelText('Critical')).toBeInTheDocument();
+    const criticalSeverity = await screen.getByLabelText('Critical');
+    jest.spyOn(api, 'get').mockResolvedValue({ status: 200, data: { data: mockCVEListFilteredBySeverity('CRITICAL') } });
+    fireEvent.click(criticalSeverity);
+    await waitFor(() => expect(screen.getAllByText(/CVE-/)).toHaveLength(1));
+    expect(screen.getByLabelText('Low')).toBeInTheDocument();
+    const lowSeverity = await screen.getByLabelText('Low');
+    jest.spyOn(api, 'get').mockResolvedValue({ status: 200, data: { data: mockCVEListFilteredBySeverity('LOW') } });
+    fireEvent.click(lowSeverity);
+    await waitFor(() => expect(screen.getAllByText(/CVE-/)).toHaveLength(10));
+    expect(screen.getByLabelText('Unknown')).toBeInTheDocument();
+    const unknownSeverity = await screen.getByLabelText('Unknown');
+    jest.spyOn(api, 'get').mockResolvedValue({ status: 200, data: { data: mockCVEListFilteredBySeverity('UNKNOWN') } });
+    fireEvent.click(unknownSeverity);
+    await waitFor(() => expect(screen.getAllByText(/CVE-/)).toHaveLength(1));
+    expect(screen.getByText('Total 5')).toBeInTheDocument();
+    const totalSeverity = await screen.getByText('Total 5');
+    jest.spyOn(api, 'get').mockResolvedValue({ status: 200, data: { data: mockCVEListFilteredBySeverity('') } });
+    fireEvent.click(totalSeverity);
+    await waitFor(() => expect(screen.getAllByText(/CVE-/)).toHaveLength(20));
   });
 
   it('sends filtered query if user types in the search bar', async () => {
-    jest.spyOn(api, 'get').mockResolvedValue({ status: 200, data: { data: mockCVEList } });
+    jest.spyOn(api, 'get').mockResolvedValueOnce({ status: 200, data: { data: mockCVEList } });
+    render(<StateVulnerabilitiesWrapper />);
+    await waitFor(() => expect(screen.getAllByText(/CVE/)).toHaveLength(20));
+    const cveSearchInput = screen.getByPlaceholderText(/search/i);
+    jest.spyOn(api, 'get').mockResolvedValue({ status: 200, data: { data: mockCVEListFiltered } });
+    await userEvent.type(cveSearchInput, '2022');
+    expect(cveSearchInput).toHaveValue('2022')
+    await waitFor(() => expect(screen.queryAllByText(/2022/i)).toHaveLength(7));
+    await waitFor(() => expect(screen.queryAllByText(/2021/i)).toHaveLength(1));
+  });
+
+  it('should have a collapsable search bar', async () => {
+    jest.spyOn(api, 'get').
+      mockResolvedValueOnce({ status: 200, data: { data: mockCVEList } }).
+      mockResolvedValue({ status: 200, data: { data: mockCVEListFilteredExclude } });
     render(<StateVulnerabilitiesWrapper />);
     const cveSearchInput = screen.getByPlaceholderText(/search/i);
-    jest.spyOn(api, 'get').mockRejectedValueOnce({ status: 200, data: { data: mockCVEListFiltered } });
-    await userEvent.type(cveSearchInput, '2022');
-    expect((await screen.queryAllByText(/2023/i).length) === 0);
-    expect((await screen.findAllByText(/2022/i)).length === 6);
-  });
+    const expandSearch = cveSearchInput.parentElement.parentElement.parentElement.parentElement.childNodes[0];
+    await fireEvent.click(expandSearch);
+    await waitFor(() => 
+      expect(screen.getAllByPlaceholderText("Exclude")).toHaveLength(1)
+    );
+    const excludeInput = screen.getByPlaceholderText("Exclude");
+    userEvent.type(excludeInput, '2022');
+    expect(excludeInput).toHaveValue('2022')
+    await waitFor(() => expect(screen.queryAllByText(/2022/i)).toHaveLength(0));
+    await waitFor(() => expect(screen.queryAllByText(/2021/i)).toHaveLength(6));
+  })
 
   it('renders no vulnerabilities if there are not any', async () => {
     jest.spyOn(api, 'get').mockResolvedValue({
       status: 200,
-      data: { data: { CVEListForImage: { Tag: '', Page: {}, CVEList: [] } } }
+      data: { data: { CVEListForImage: { Tag: '', Page: {}, CVEList: [], Summary: {} } } }
     });
     render(<StateVulnerabilitiesWrapper />);
     await waitFor(() => expect(screen.getAllByText('No Vulnerabilities')).toHaveLength(1));
   });
 
-  it('should open and close description dropdown for vulnerabilities', async () => {
-    jest.spyOn(api, 'get').mockResolvedValue({ status: 200, data: { data: mockCVEList } });
+  it('should show description for vulnerabilities', async () => {
+    jest.spyOn(api, 'get').mockResolvedValueOnce({ status: 200, data: { data: mockCVEList } })
+      .mockResolvedValue({ status: 200, data: { data: mockCVEFixed.pageOne } });
     render(<StateVulnerabilitiesWrapper />);
-    await waitFor(() => expect(screen.getAllByText(/description/i)).toHaveLength(20));
-    const openText = screen.getAllByText(/description/i);
-    await fireEvent.click(openText[0]);
+    const expandListBtn = await screen.findAllByTestId('ViewAgendaIcon');
+    fireEvent.click(expandListBtn[0]);
+    await waitFor(() => expect(screen.getAllByText(/Description/)).toHaveLength(20));
     await waitFor(() =>
       expect(screen.getAllByText(/CPAN 2.28 allows Signature Verification Bypass./i)).toHaveLength(1)
-    );
-    await fireEvent.click(openText[0]);
-    await waitFor(() =>
-      expect(screen.queryByText(/CPAN 2.28 allows Signature Verification Bypass./i)).not.toBeInTheDocument()
     );
   });
 
@@ -549,13 +749,111 @@ describe('Vulnerabilties page', () => {
       .mockResolvedValueOnce({ status: 200, data: { data: mockCVEFixed.pageTwo } });
     render(<StateVulnerabilitiesWrapper />);
     await waitFor(() => expect(screen.getAllByText('Vulnerabilities')).toHaveLength(1));
-    await fireEvent.click(screen.getAllByText(/fixed in/i)[0]);
+    const expandListBtn = await screen.findAllByTestId('KeyboardArrowRightIcon');
+    fireEvent.click(expandListBtn[1]);
     await waitFor(() => expect(screen.getByText('1.0.16')).toBeInTheDocument());
-    const loadMoreBtn = screen.getByText(/load more/i);
-    expect(loadMoreBtn).toBeInTheDocument();
+    await waitFor(() => expect(screen.getAllByText(/Load more/).length).toBe(1));
+    const loadMoreBtn = screen.getAllByText(/Load more/)[0];
     await fireEvent.click(loadMoreBtn);
     await waitFor(() => expect(loadMoreBtn).not.toBeInTheDocument());
     expect(await screen.findByText('latest')).toBeInTheDocument();
+  });
+
+  it('should show the list of vulnerable packages for the CVEs', async () => {
+    jest.spyOn(api, 'get').mockResolvedValueOnce({ status: 200, data: { data: simpleMockCVEList } })
+    render(<StateVulnerabilitiesWrapper />);
+    const expandListBtn = await screen.findByTestId('expand-list-view-toggle');
+    fireEvent.click(expandListBtn);
+    const packageLists = await screen.findAllByTestId('cve-package-list');
+    expect(packageLists.length).toEqual(2); // Data set has 2 CVEs, so 2 package lists
+
+    const expectedData = [
+        {
+          Name: 'perl-base',
+          PackagePath: 'Not Specified',
+          InstalledVersion: '5.30.0-9ubuntu0.2',
+          FixedVersion: 'Not Specified'
+        },
+        {
+          Name: 'org.springframework:spring-web',
+          PackagePath: 'usr/local/tomcat/webapps/spring4shell.war/WEB-INF/lib/spring-web-5.3.15.jar',
+          InstalledVersion: '5.3.15',
+          FixedVersion: '6.0.0'
+        }
+    ];
+
+    for (let index = 0; index < 2; index++) {
+      const expectedPackageData = expectedData[index];
+      const container = packageLists[index];
+      const pkgName = await within(container).findAllByTestId('cve-info-pkg-name');
+      expect(pkgName).toHaveLength(1);
+      expect(pkgName[0]).toHaveTextContent(expectedPackageData.Name);
+
+      const pkgPath = await within(container).findAllByTestId('cve-info-pkg-path');
+      expect(pkgPath).toHaveLength(1);
+      expect(pkgPath[0]).toHaveTextContent(expectedPackageData.PackagePath);
+
+      const pkgInstalledVer = await within(container).findAllByTestId('cve-info-pkg-install-ver');
+      expect(pkgInstalledVer).toHaveLength(1);
+      expect(pkgInstalledVer[0]).toHaveTextContent(expectedPackageData.InstalledVersion);
+
+      const pkgFixedVer = await within(container).findAllByTestId('cve-info-pkg-fixed-ver');
+      expect(pkgFixedVer).toHaveLength(1);
+      expect(pkgFixedVer[0]).toHaveTextContent(expectedPackageData.FixedVersion);
+    }
+  });
+
+  it('should allow export of vulnerabilities list', async () => {
+    const xlsxMock = jest.createMockFromModule('xlsx');
+    xlsxMock.writeFile = jest.fn();
+
+    jest.spyOn(api, 'get').mockResolvedValue({ status: 200, data: { data: mockCVEList } });
+    render(<StateVulnerabilitiesWrapper />);
+    await waitFor(() => expect(screen.getAllByText('Vulnerabilities')).toHaveLength(1));
+    const downloadBtn = await screen.findAllByTestId('DownloadIcon');
+    fireEvent.click(downloadBtn[0]);
+    expect(await screen.findByTestId('export-csv-menuItem')).toBeInTheDocument();
+    expect(await screen.findByTestId('export-excel-menuItem')).toBeInTheDocument();
+    const exportAsCSVBtn = screen.getByText(/csv/i);
+    expect(exportAsCSVBtn).toBeInTheDocument();
+    global.URL.createObjectURL = jest.fn();
+    await fireEvent.click(exportAsCSVBtn);
+    expect(await screen.findByTestId('export-csv-menuItem')).not.toBeInTheDocument();
+    fireEvent.click(downloadBtn[0]);
+    const exportAsExcelBtn = screen.getByText(/xlsx/i);
+    expect(exportAsExcelBtn).toBeInTheDocument();
+    await fireEvent.click(exportAsExcelBtn);
+    expect(await screen.findByTestId('export-excel-menuItem')).not.toBeInTheDocument();
+  });
+
+  it("should log an error when data can't be fetched for downloading", async () => {
+    const xlsxMock = jest.createMockFromModule('xlsx');
+    xlsxMock.writeFile = jest.fn();
+
+    jest.spyOn(api, 'get').
+      mockResolvedValueOnce({ status: 200, data: { data: mockCVEList } }).
+      mockRejectedValue({ status: 500, data: {} });
+    const error = jest.spyOn(console, 'error').mockImplementation(() => {});
+    render(<StateVulnerabilitiesWrapper />);
+    await waitFor(() => expect(screen.getAllByText('Vulnerabilities')).toHaveLength(1));
+    const downloadBtn = await screen.findAllByTestId('DownloadIcon');
+    fireEvent.click(downloadBtn[0]);
+    expect(await screen.findByTestId('export-csv-menuItem')).toBeInTheDocument();
+    expect(await screen.findByTestId('export-excel-menuItem')).toBeInTheDocument();
+    await waitFor(() => expect(error).toBeCalledTimes(1));
+  });
+
+  it('should expand/collapse the list of CVEs', async () => {
+    jest.spyOn(api, 'get').mockResolvedValueOnce({ status: 200, data: { data: mockCVEList } });
+    render(<StateVulnerabilitiesWrapper />);
+    await waitFor(() => expect(screen.getAllByText('Vulnerabilities')).toHaveLength(1));
+    jest.spyOn(api, 'get').mockResolvedValue({ status: 200, data: { data: mockCVEFixed.pageOne } });
+    const expandListBtn = await screen.findAllByTestId('ViewAgendaIcon');
+    fireEvent.click(expandListBtn[0]);
+    await waitFor(() => expect(screen.getAllByText('Fixed in')).toHaveLength(20));
+    const collapseListBtn = await screen.findAllByTestId('ViewHeadlineIcon');
+    fireEvent.click(collapseListBtn[0]);
+    expect(await screen.findByText('Fixed in')).not.toBeVisible();
   });
 
   it('should handle fixed CVE query errors', async () => {
@@ -566,7 +864,8 @@ describe('Vulnerabilties page', () => {
     render(<StateVulnerabilitiesWrapper />);
     await waitFor(() => expect(screen.getAllByText('Vulnerabilities')).toHaveLength(1));
     const error = jest.spyOn(console, 'error').mockImplementation(() => {});
-    await fireEvent.click(screen.getAllByText(/fixed in/i)[0]);
+    const expandListBtn = await screen.findAllByTestId('KeyboardArrowRightIcon');
+    fireEvent.click(expandListBtn[1]);
     await waitFor(() => expect(screen.getByText(/not fixed/i)).toBeInTheDocument());
     await waitFor(() => expect(error).toBeCalledTimes(1));
   });

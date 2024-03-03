@@ -9,12 +9,20 @@ import { isEmpty, uniq } from 'lodash';
 import { api, endpoints } from '../../api';
 import { host } from '../../host';
 import { useParams, useNavigate, createSearchParams } from 'react-router-dom';
+import { mapToRepoFromRepoInfo } from 'utilities/objectModels';
+import { isAuthenticated } from 'utilities/authUtilities';
 
 // components
 import { Card, CardContent, CardMedia, Chip, Grid, Stack, Tooltip, Typography, IconButton } from '@mui/material';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
-import makeStyles from '@mui/styles/makeStyles';
+import StarIcon from '@mui/icons-material/Star';
+import StarBorderIcon from '@mui/icons-material/StarBorder';
+import Tags from './Tabs/Tags.jsx';
+import RepoDetailsMetadata from './RepoDetailsMetadata';
+import Loading from '../Shared/Loading';
+import { Markdown } from 'utilities/MarkdowntojsxWrapper';
+import { VulnerabilityIconCheck, SignatureIconCheck } from 'utilities/vulnerabilityAndSignatureCheck';
 
 // placeholder images
 import repocube1 from '../../assets/repocube-1.png';
@@ -22,13 +30,7 @@ import repocube2 from '../../assets/repocube-2.png';
 import repocube3 from '../../assets/repocube-3.png';
 import repocube4 from '../../assets/repocube-4.png';
 
-import Tags from './Tabs/Tags.jsx';
-import RepoDetailsMetadata from './RepoDetailsMetadata';
-import Loading from '../Shared/Loading';
-import { Markdown } from 'utilities/MarkdowntojsxWrapper';
-import { VulnerabilityIconCheck, SignatureIconCheck } from 'utilities/vulnerabilityAndSignatureCheck';
-import { mapToRepoFromRepoInfo } from 'utilities/objectModels';
-import { isAuthenticated } from 'utilities/authUtilities';
+import makeStyles from '@mui/styles/makeStyles';
 
 const useStyles = makeStyles((theme) => ({
   pageWrapper: {
@@ -195,6 +197,10 @@ function RepoDetails() {
     };
   }, [name]);
 
+  const handleDeleteTag = (removed) => {
+    setTags((prevState) => prevState.filter((tag) => tag.tag !== removed));
+  };
+
   const handlePlatformChipClick = (event) => {
     const { textContent } = event.target;
     event.stopPropagation();
@@ -221,10 +227,21 @@ function RepoDetails() {
 
   const handleBookmarkClick = () => {
     api.put(`${host()}${endpoints.bookmarkToggle(name)}`, abortController.signal).then((response) => {
-      if (response.status === 200) {
+      if (response && response.status === 200) {
         setRepoDetailData((prevState) => ({
           ...prevState,
           isBookmarked: !prevState.isBookmarked
+        }));
+      }
+    });
+  };
+
+  const handleStarClick = () => {
+    api.put(`${host()}${endpoints.starToggle(name)}`, abortController.signal).then((response) => {
+      if (response.status === 200) {
+        setRepoDetailData((prevState) => ({
+          ...prevState,
+          isStarred: !prevState.isStarred
         }));
       }
     });
@@ -276,15 +293,26 @@ function RepoDetails() {
                           signatureInfo={repoDetailData.signatureInfo}
                         />
                       </Stack>
-                      {isAuthenticated() && (
-                        <IconButton component="span" onClick={handleBookmarkClick} data-testid="bookmark-button">
-                          {repoDetailData?.isBookmarked ? (
-                            <BookmarkIcon data-testid="bookmarked" />
-                          ) : (
-                            <BookmarkBorderIcon data-testid="not-bookmarked" />
-                          )}
-                        </IconButton>
-                      )}
+                      <Stack alignItems="center" sx={{ width: { xs: '100%', md: 'auto' } }} direction="row" spacing={1}>
+                        {isAuthenticated() && (
+                          <IconButton component="span" onClick={handleStarClick} data-testid="star-button">
+                            {repoDetailData?.isStarred ? (
+                              <StarIcon data-testid="starred" />
+                            ) : (
+                              <StarBorderIcon data-testid="not-starred" />
+                            )}
+                          </IconButton>
+                        )}
+                        {isAuthenticated() && (
+                          <IconButton component="span" onClick={handleBookmarkClick} data-testid="bookmark-button">
+                            {repoDetailData?.isBookmarked ? (
+                              <BookmarkIcon data-testid="bookmarked" />
+                            ) : (
+                              <BookmarkBorderIcon data-testid="not-bookmarked" />
+                            )}
+                          </IconButton>
+                        )}
+                      </Stack>
                     </Stack>
                     <Typography gutterBottom className={classes.repoTitle}>
                       {repoDetailData?.title || 'Title not available'}
@@ -317,7 +345,7 @@ function RepoDetails() {
           <Grid item xs={12} md={8} className={classes.tags}>
             <Card className={classes.cardRoot}>
               <CardContent className={classes.tagsContent}>
-                <Tags tags={tags} />
+                <Tags tags={tags} repoName={name} onTagDelete={handleDeleteTag} />
               </CardContent>
             </Card>
           </Grid>
